@@ -8,6 +8,9 @@ CFLAGS := -Wall -Wextra
 
 all: $(TARGET)
 
+debug: CFLAGS += -g
+debug: all
+
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) $^ -o $@
 
