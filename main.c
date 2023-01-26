@@ -58,6 +58,7 @@ void ysh_loop() {
     char **tokens = NULL;
     size_t len = 0;
     ssize_t size;
+    printf("> ");
     while ((size = getline(&line, &len, stdin)) != -1) {
         if (strcmp(line, "exit\n") == 0) {
             break;
@@ -65,6 +66,7 @@ void ysh_loop() {
         line[strlen(line)-1] = NULL;
         tokens = tokenize(line);
         execute_command(*tokens, tokens);
+        printf("> ");
     }
     return;
 }
