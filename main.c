@@ -91,6 +91,32 @@ char **tokenize(char *line) {
     return tokens;
 }
 
+int sizeof_char_array(char **array) {
+
+    int size = 0;
+    for (size = 0; array[size] != NULL; size++);
+    return size;
+}
+
+char ***split_commands(char **tokens) {
+
+    // TODO: Split commands by pipe character and pass to execute_command
+    char ***commands = (char ***) malloc(sizeof(char **) * 3);
+    commands[0] = tokens;
+    char **test = (char **) malloc(sizeof(char *) * 3);
+    test[0] = "wc";
+    test[1] = "-l";
+    commands[1] = test; 
+        
+    return commands;
+}
+
+void launch(char ***commands) {
+
+    // TODO: Change to run arbitrary number of commands
+    execute_command(*commands[0], commands[0], *commands[1], commands[1]);
+}
+
 void ysh_loop() {
 
     char *line = NULL;
@@ -104,10 +130,9 @@ void ysh_loop() {
         }
         line[strlen(line)-1] = NULL;
         tokens = tokenize(line);
-        // TODO: Split commands by pipe character and pass to execute_command
         int pipe_index = find_pipe(tokens);
-        char *test[2] = {"wc", "-l"};
-        execute_command(*tokens, tokens, "wc", test);
+        char ***commands = split_commands(tokens);
+        launch(commands);
         printf("> ");
     }
     return;
