@@ -100,13 +100,33 @@ int sizeof_char_array(char **array) {
 
 char ***split_commands(char **tokens) {
 
-    // TODO: Split commands by pipe character and pass to execute_command
-    char ***commands = (char ***) malloc(sizeof(char **) * 3);
-    commands[0] = tokens;
-    char **test = (char **) malloc(sizeof(char *) * 3);
-    test[0] = "wc";
-    test[1] = "-l";
-    commands[1] = test; 
+    size_t bufsize = 1;
+    int token_len = sizeof_char_array(tokens);
+    char ***commands = (char ***) malloc(sizeof(char **) * bufsize);
+
+    int command_cnt = 0;
+    int i = 0;
+    int pipe_index = 0;
+    while (1) {
+        if (i + 1 > bufsize) {
+            bufsize += 1;
+            commands = (char ***) realloc(commands, sizeof(char **) * bufsize);
+        }
+        int pipe_index = find_pipe(tokens + i);
+        if (pipe_index == -1) {
+            char **command = (char **) malloc(sizeof(char *) * (token_len - i));
+            command = tokens + i;
+            commands[command_cnt] = command;
+            break;
+        }
+        char **command = (char **) malloc(sizeof(char *) * (pipe_index-i));
+        command = tokens + i;
+        tokens[pipe_index] = NULL;
+
+        commands[command_cnt] = command;
+        i = pipe_index + 1;
+        command_cnt++;
+    }
         
     return commands;
 }
