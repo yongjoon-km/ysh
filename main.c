@@ -79,7 +79,7 @@ char **tokenize(char *line) {
     token = strtok(line, " ");
     while (token != NULL) {
 
-        if (i + 1 >= bufsize) {
+        if ((size_t) i + 1 >= bufsize) {
             bufsize += 1;
             tokens = (char **)realloc(tokens, sizeof(char *) * bufsize);
             tokens[i] = (char *)malloc(sizeof(char) * (strlen(token)+1));
@@ -105,27 +105,23 @@ char ***split_commands(char **tokens) {
     char ***result = (char ***) malloc(sizeof(char **) * bufsize);
 
     int command_id = 0;
-    int next_command_index = 0;
+    int processing_command_start_index = 0;
     int pipe_char_index = 0;
-    while (1) {
-        if (next_command_index + 1 > bufsize) {
-            bufsize += 1;
-            result = (char ***) realloc(result, sizeof(char **) * bufsize);
+    while (pipe_char_index >= 0) {
+        if ((size_t) processing_command_start_index + 1 > bufsize) {
+            result = (char ***) realloc(result, sizeof(char **) * ++bufsize);
         }
-        int pipe_char_index = find_pipe(tokens + next_command_index);
-        if (pipe_char_index == -1) {
-            char **command = (char **) malloc(sizeof(char *) * (token_len - next_command_index));
-            command = tokens + next_command_index;
-            result[command_id] = command;
-            break;
+        pipe_char_index = find_pipe(tokens + processing_command_start_index);
+        char **command = NULL;
+        if (pipe_char_index != -1) {
+            command = (char **) malloc(sizeof(char *) * (pipe_char_index - processing_command_start_index));
+            tokens[pipe_char_index] = NULL;
+        } else {
+            command = (char **) malloc(sizeof(char *) * (token_len - processing_command_start_index));
         }
-        char **command = (char **) malloc(sizeof(char *) * (pipe_char_index - next_command_index));
-        command = tokens + next_command_index;
-        tokens[pipe_char_index] = NULL;
-
-        result[command_id] = command;
-        next_command_index = pipe_char_index + 1;
-        command_id++;
+        command = tokens + processing_command_start_index;
+        result[command_id++] = command;
+        processing_command_start_index = pipe_char_index + 1;
     }
         
     return result;
@@ -148,9 +144,8 @@ void ysh_loop() {
         if (strcmp(line, "exit\n") == 0) {
             break;
         }
-        line[strlen(line)-1] = NULL;
+        line[strlen(line)-1] = '\0';
         tokens = tokenize(line);
-        int pipe_index = find_pipe(tokens);
         char ***commands = split_commands(tokens);
         launch(commands);
         printf("> ");
