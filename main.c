@@ -43,6 +43,7 @@ void execute_command(char *command1, char **argv1, char *command2, char **argv2)
         else if (pid2 == 0) {
             if (command2 != NULL) {
                 dup2(fd[0], STDIN_FILENO);
+                // dup2(fd2[1], STDOUT_FILENO);
                 close(fd[0]);
                 close(fd[1]);
                 if (execvp(command2, argv2) < 0) {
@@ -51,11 +52,52 @@ void execute_command(char *command1, char **argv1, char *command2, char **argv2)
                 }
             }
         } else {
+            // dup2(fd2[0], STDIN_FILENO);
             close(fd[0]);
             close(fd[1]);
             while (wait(&status) != pid);
         }
     }
+}
+
+// TODO: Create general execute command function
+void execute_command_recursive(char ***commands, int command_index, int in_fd) {
+
+    if (commands[command_index] == NULL) {
+        return;
+    }
+
+    pid_t pid;
+    int fd[2];
+    int status;
+
+    if (pipe(fd) < 0) {
+        printf("ERROR: creating pipe faild\n");
+        exit(1);
+    }
+
+    if ((pid = fork()) < 0) {
+        printf("ERROR: forking child process%d failed\n", command_index);
+        exit(1);
+    }
+    else if (pid == 0) {
+        dup2(in_fd, STDIN_FILENO);
+        dup2(fd[1], STDOUT_FILENO);
+        close(in_fd);
+        close(fd[1]);
+        close(fd[0]);
+        if (execvp(*commands[command_index], commands[command_index]) < 0) {
+            printf("ERROR: exec child process failed\n");
+            exit(1);
+        }
+    }
+    else {
+        execute_command_recursive(commands, command_index + 1, fd[0]);
+        close(fd[0]);
+        close(fd[1]);
+        wait(NULL);
+    }
+
 }
 
 int find_pipe(char **tokens) {
@@ -130,7 +172,8 @@ char ***split_commands(char **tokens) {
 void launch(char ***commands) {
 
     // TODO: Change to run arbitrary number of commands
-    execute_command(*commands[0], commands[0], *commands[1], commands[1]);
+    // execute_command(*commands[0], commands[0], *commands[1], commands[1]);
+    execute_command_recursive(commands, 0, STDIN_FILENO);
 }
 
 void ysh_loop() {
