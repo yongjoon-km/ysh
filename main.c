@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 void ysh_loop();
 
@@ -60,8 +61,31 @@ void execute_command(char *command1, char **argv1, char *command2, char **argv2)
     }
 }
 
+void execute_command_loop(char ***commands) {
+    int command_index = 0;
+
+    for (command_index = 0; commands[command_index] != NULL; command_index++) {
+        // TODO create child processes and connect to pipe
+        pid_t pid;
+
+        if ((pid = fork()) < 0) {
+            printf("ERROR: forking child process failed\n");
+            exit(1);
+        }
+
+        if (pid == 0) {
+            if (execvp(*commands[command_index], commands[command_index])) {
+                printf("ERROR: exec child process failed\n");
+                exit(1);
+            }
+        } 
+    }
+
+    wait(NULL);
+}
+
 // TODO: Create general execute command function
-void execute_command_recursive(char ***commands, int command_index, int in_fd) {
+void execute_command_recursive(char ***commands, int command_index, int in_fd, int out_fd) {
 
     if (commands[command_index] == NULL) {
         return;
@@ -70,8 +94,9 @@ void execute_command_recursive(char ***commands, int command_index, int in_fd) {
     pid_t pid;
     int fd[2];
     int status;
+    bool has_next_command = commands[command_index + 1] != NULL;
 
-    if (pipe(fd) < 0) {
+    if (has_next_command && pipe(fd) < 0) {
         printf("ERROR: creating pipe faild\n");
         exit(1);
     }
@@ -82,19 +107,22 @@ void execute_command_recursive(char ***commands, int command_index, int in_fd) {
     }
     else if (pid == 0) {
         dup2(in_fd, STDIN_FILENO);
-        dup2(fd[1], STDOUT_FILENO);
-        close(in_fd);
-        close(fd[1]);
-        close(fd[0]);
+        if (has_next_command) {
+            dup2(fd[1], STDOUT_FILENO);
+            close(fd[1]);
+            close(fd[0]);
+        } 
         if (execvp(*commands[command_index], commands[command_index]) < 0) {
             printf("ERROR: exec child process failed\n");
             exit(1);
         }
     }
     else {
-        execute_command_recursive(commands, command_index + 1, fd[0]);
-        close(fd[0]);
-        close(fd[1]);
+        execute_command_recursive(commands, command_index + 1, fd[0], fd[1]);
+        if (has_next_command) {
+            close(fd[0]);
+            close(fd[1]);
+        }
         wait(NULL);
     }
 
@@ -173,7 +201,9 @@ void launch(char ***commands) {
 
     // TODO: Change to run arbitrary number of commands
     // execute_command(*commands[0], commands[0], *commands[1], commands[1]);
-    execute_command_recursive(commands, 0, STDIN_FILENO);
+    // Failed the below approach, I think shell process should manange all the pipe file descriptors.
+    // execute_command_recursive(commands, 0, STDIN_FILENO, STDOUT_FILENO);
+    execute_command_loop(commands);
 }
 
 void ysh_loop() {
