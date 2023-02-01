@@ -63,9 +63,18 @@ void execute_command(char *command1, char **argv1, char *command2, char **argv2)
 
 void execute_command_loop(char ***commands) {
     int command_index = 0;
+    
+    int command_count = 0;
+    for (command_count = 0; commands[command_count] != NULL; command_count++);
 
-    for (command_index = 0; commands[command_index] != NULL; command_index++) {
-        // TODO create child processes and connect to pipe
+    int pipes[command_count][2];
+
+    int pipe_index = 0;
+    for (pipe_index = 0; pipe_index < command_count; pipe_index++) {
+        pipe(pipes[pipe_index]);
+    }
+
+    for (command_index = 0; command_index < command_count; command_index++) {
         pid_t pid;
 
         if ((pid = fork()) < 0) {
@@ -74,11 +83,28 @@ void execute_command_loop(char ***commands) {
         }
 
         if (pid == 0) {
+            if (command_index > 0) {
+                dup2(pipes[command_index-1][0], STDIN_FILENO);
+                close(pipes[command_index-1][0]);
+                close(pipes[command_index-1][1]);
+            }
+            if (command_index + 1 < command_count) {
+                dup2(pipes[command_index][1], STDOUT_FILENO);
+                close(pipes[command_index][1]);
+                close(pipes[command_index][0]);
+            }
+
             if (execvp(*commands[command_index], commands[command_index])) {
                 printf("ERROR: exec child process failed\n");
                 exit(1);
             }
         } 
+    }
+
+    int i = 0;
+    for (i = 0; i < command_count; i++) {
+        close(pipes[i][0]);
+        close(pipes[i][1]);
     }
 
     wait(NULL);
