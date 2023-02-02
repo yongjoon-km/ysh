@@ -110,50 +110,6 @@ void execute_command_loop(char ***commands) {
     wait(NULL);
 }
 
-// TODO: Create general execute command function
-void execute_command_recursive(char ***commands, int command_index, int in_fd, int out_fd) {
-
-    if (commands[command_index] == NULL) {
-        return;
-    }
-
-    pid_t pid;
-    int fd[2];
-    int status;
-    bool has_next_command = commands[command_index + 1] != NULL;
-
-    if (has_next_command && pipe(fd) < 0) {
-        printf("ERROR: creating pipe faild\n");
-        exit(1);
-    }
-
-    if ((pid = fork()) < 0) {
-        printf("ERROR: forking child process%d failed\n", command_index);
-        exit(1);
-    }
-    else if (pid == 0) {
-        dup2(in_fd, STDIN_FILENO);
-        if (has_next_command) {
-            dup2(fd[1], STDOUT_FILENO);
-            close(fd[1]);
-            close(fd[0]);
-        } 
-        if (execvp(*commands[command_index], commands[command_index]) < 0) {
-            printf("ERROR: exec child process failed\n");
-            exit(1);
-        }
-    }
-    else {
-        execute_command_recursive(commands, command_index + 1, fd[0], fd[1]);
-        if (has_next_command) {
-            close(fd[0]);
-            close(fd[1]);
-        }
-        wait(NULL);
-    }
-
-}
-
 int find_pipe(char **tokens, int start_index) {
 
     int i = start_index;
@@ -224,11 +180,6 @@ char ***split_commands(char **tokens) {
 }
 
 void launch(char ***commands) {
-
-    // TODO: Change to run arbitrary number of commands
-    // execute_command(*commands[0], commands[0], *commands[1], commands[1]);
-    // Failed the below approach, I think shell process should manange all the pipe file descriptors.
-    // execute_command_recursive(commands, 0, STDIN_FILENO, STDOUT_FILENO);
     execute_command_loop(commands);
 }
 
