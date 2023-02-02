@@ -154,9 +154,9 @@ void execute_command_recursive(char ***commands, int command_index, int in_fd, i
 
 }
 
-int find_pipe(char **tokens) {
+int find_pipe(char **tokens, int start_index) {
 
-    int i = 0;
+    int i = start_index;
     while (tokens[i] != NULL) {
         if (strcmp(tokens[i], "|") == 0) {
             return i;
@@ -201,23 +201,23 @@ char ***split_commands(char **tokens) {
     char ***result = (char ***) malloc(sizeof(char **) * bufsize);
 
     int command_id = 0;
-    int processing_command_start_index = 0;
-    int pipe_char_index = 0;
-    while (pipe_char_index >= 0) {
-        if ((size_t) processing_command_start_index + 1 > bufsize) {
+    int curr_index = 0;
+    int next_pipe_index = 0;
+    while (next_pipe_index >= 0) {
+        if ((size_t) command_id >= bufsize) {
             result = (char ***) realloc(result, sizeof(char **) * ++bufsize);
         }
-        pipe_char_index = find_pipe(tokens + processing_command_start_index);
+        next_pipe_index = find_pipe(tokens, curr_index);
         char **command = NULL;
-        if (pipe_char_index != -1) {
-            command = (char **) malloc(sizeof(char *) * (pipe_char_index - processing_command_start_index));
-            tokens[pipe_char_index] = NULL;
+        if (next_pipe_index != -1) {
+            command = (char **) malloc(sizeof(char *) * (next_pipe_index - curr_index));
+            tokens[next_pipe_index] = NULL;
         } else {
-            command = (char **) malloc(sizeof(char *) * (token_len - processing_command_start_index));
+            command = (char **) malloc(sizeof(char *) * (token_len - curr_index + 1));
         }
-        command = tokens + processing_command_start_index;
+        command = tokens + curr_index;
         result[command_id++] = command;
-        processing_command_start_index = pipe_char_index + 1;
+        curr_index = next_pipe_index + 1;
     }
         
     return result;
