@@ -25,6 +25,8 @@ void execute_command_loop(char ***commands) {
         pipe(pipes[pipe_index]);
     }
 
+    pid_t pids[command_count];
+
     for (command_index = 0; command_index < command_count; command_index++) {
         pid_t pid;
 
@@ -36,20 +38,24 @@ void execute_command_loop(char ***commands) {
         if (pid == 0) {
             if (command_index > 0) {
                 dup2(pipes[command_index-1][0], STDIN_FILENO);
-                close(pipes[command_index-1][0]);
-                close(pipes[command_index-1][1]);
             }
             if (command_index + 1 < command_count) {
                 dup2(pipes[command_index][1], STDOUT_FILENO);
-                close(pipes[command_index][1]);
-                close(pipes[command_index][0]);
+            }
+
+            int i = 0;
+            for (i = 0; i < command_count; i++) {
+                close(pipes[i][0]);
+                close(pipes[i][1]);
             }
 
             if (execvp(*commands[command_index], commands[command_index])) {
                 printf("ERROR: exec child process failed\n");
                 exit(1);
             }
-        } 
+        } else {
+            pids[command_index] = pid;
+        }
     }
 
     int i = 0;
@@ -58,7 +64,9 @@ void execute_command_loop(char ***commands) {
         close(pipes[i][1]);
     }
 
-    wait(NULL);
+    for (i = 0; i < command_count; i++) {
+        waitpid(pids[i], NULL, WUNTRACED);
+    }
 }
 
 int find_pipe(char **tokens, int start_index) {
