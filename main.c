@@ -12,55 +12,6 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-void execute_command(char *command1, char **argv1, char *command2, char **argv2) {
-
-    pid_t pid;
-    pid_t pid2;
-    int status;
-    int fd[2];
-    if(pipe(fd) < 0) {
-        printf("ERROR: creating pipe failed\n");
-        exit(1);
-    }
-
-    if ((pid = fork()) < 0) {
-        printf("ERROR: forking child process failed\n");
-        exit(1);
-    }
-    else if (pid == 0) {
-        dup2(fd[1], STDOUT_FILENO);
-        close(fd[0]);
-        close(fd[1]);
-        if (execvp(command1, argv1) < 0) {
-            printf("ERROR: exec child process failed\n");
-            exit(1);
-        }
-    }
-    else {
-        if ((pid2 = fork()) < 0) {
-            printf("ERROR: forking child process2 failed\n");
-            exit(1);
-        }
-        else if (pid2 == 0) {
-            if (command2 != NULL) {
-                dup2(fd[0], STDIN_FILENO);
-                // dup2(fd2[1], STDOUT_FILENO);
-                close(fd[0]);
-                close(fd[1]);
-                if (execvp(command2, argv2) < 0) {
-                    printf("ERROR: exec child process2 failed\n");
-                    exit(1);
-                }
-            }
-        } else {
-            // dup2(fd2[0], STDIN_FILENO);
-            close(fd[0]);
-            close(fd[1]);
-            while (wait(&status) != pid);
-        }
-    }
-}
-
 void execute_command_loop(char ***commands) {
     int command_index = 0;
     
