@@ -12,6 +12,14 @@ int main(int argc, char** argv) {
     return 0;
 }
 
+void close_all_pipes(int pipes[][2], int n) {
+    int i = 0;
+    for (i = 0; i < n; i++) {
+        close(pipes[i][0]);
+        close(pipes[i][1]);
+    }
+}
+
 void execute_command_loop(char ***commands) {
     int command_index = 0;
     
@@ -43,11 +51,7 @@ void execute_command_loop(char ***commands) {
                 dup2(pipes[command_index][1], STDOUT_FILENO);
             }
 
-            int i = 0;
-            for (i = 0; i < command_count; i++) {
-                close(pipes[i][0]);
-                close(pipes[i][1]);
-            }
+            close_all_pipes(pipes, command_count);
 
             if (execvp(*commands[command_index], commands[command_index])) {
                 printf("ERROR: exec child process failed\n");
@@ -58,12 +62,9 @@ void execute_command_loop(char ***commands) {
         }
     }
 
-    int i = 0;
-    for (i = 0; i < command_count; i++) {
-        close(pipes[i][0]);
-        close(pipes[i][1]);
-    }
+    close_all_pipes(pipes, command_count);
 
+    int i = 0;
     for (i = 0; i < command_count; i++) {
         waitpid(pids[i], NULL, WUNTRACED);
     }
