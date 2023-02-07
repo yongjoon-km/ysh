@@ -91,10 +91,9 @@ char **tokenize(char *line) {
     while (token != NULL) {
 
         if ((size_t) i + 1 >= bufsize) {
-            bufsize += 1;
-            tokens = (char **)realloc(tokens, sizeof(char *) * bufsize);
-            tokens[i] = (char *)malloc(sizeof(char) * (strlen(token)+1));
+            tokens = (char **)realloc(tokens, sizeof(char *) * ++bufsize);
         }
+        tokens[i] = (char *)malloc(sizeof(char) * (strlen(token)+1));
         strcpy(tokens[i], token);
         i++;
         token = strtok(NULL, " ");
